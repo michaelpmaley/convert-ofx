@@ -1,0 +1,19 @@
+{
+  "name": "convert-qfx",
+  "version": "1.0.0",
+  "description": "Convert and patch qfx files into csv files",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "backfill": "node backfill.js"
+  },
+  "keywords": [],
+  "author": "Michael P Maley",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "csvjson": "^5.1.0",
+    "dayjs": "^1.11.6",
+    "ofx-js": "^0.1.1"
+  }
+}
