@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "backfill": "node backfill.js"
+    "backfill": "node backfill.js",
+    "audit": "node audit.js"
   },
   "keywords": [],
   "author": "Michael P Maley",
@@ -14,6 +15,7 @@
   "dependencies": {
     "csvjson": "^5.1.0",
     "dayjs": "^1.11.6",
-    "ofx-js": "^0.1.1"
+    "ofx-js": "^0.1.1",
+    "string-similarity": "^4.0.4"
   }
 }

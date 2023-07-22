@@ -11,14 +11,13 @@ const DOWNLOADSFOLDER = path.join(os.homedir(), 'Downloads');
 const MAPPINGSFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transaction-mappings.json');
 const DATABASEFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transactions.csv');
 const DATABASEBAKFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transactions.bak');
-
+const HEADERS = 'date,payee,category,amount,notes,checknum,institution,type,id';
 
 const ACCOUNTTYPE = {
    BANK: "Checking",
    CREDITCARD: "Credit Card"
 };
 Object.freeze(ACCOUNTTYPE);
-
 
 const parseOfxDate = ((ofxDate) => {
    // 20221003120000[0:GMT]    20221001000000.000[-7:MST]
@@ -54,22 +53,21 @@ const computeMemo = ((accountType, payee, memo) => {
 });
 
 (async () => {
+
    const mappings = JSON.parse(fs.readFileSync(MAPPINGSFILE).toString());
    const mappingKeys = Object.keys(mappings);
 
-   fs.copyFileSync(DATABASEFILE, DATABASEBAKFILE);
    const database = csvjson.toObject(fs.readFileSync(DATABASEFILE).toString(), {delimiter: ',', quote: '"'});
    const databaseIds = database.filter(i => i.id !== null && i.id.trim() !== "").map(i => i.id);
 
-   const folder = DOWNLOADSFOLDER;
-   for (const file of fs.readdirSync(folder)) {
+   for (const file of fs.readdirSync(DOWNLOADSFOLDER)) {
       if (!file.toLowerCase().endsWith('.qfx') || file.toLowerCase().includes('patched')) {
          console.log(`SKIPPING: ${file}`);
          continue;
       }
 
-      // 1. read ofx file
-      const ofxFile = path.join(folder, file);
+      // read ofx file
+      const ofxFile = path.join(DOWNLOADSFOLDER, file);
       const ofxData = await parseOFX(fs.readFileSync(ofxFile).toString());
       const institution = computeInstitution(ofxData.OFX.SIGNONMSGSRSV1.SONRS.FI.ORG);
       const accountType = ofxData.OFX.BANKMSGSRSV1 ? ACCOUNTTYPE.BANK : ACCOUNTTYPE.CREDITCARD;
@@ -79,7 +77,7 @@ const computeMemo = ((accountType, payee, memo) => {
       const dateEnd = parseOfxDate(statement.BANKTRANLIST.DTEND);
       const ofxTransactions = statement.BANKTRANLIST.STMTTRN;
 
-      // 2. process transactions
+      // process transactions
       const transactions = [];
       for (const ofxTransaction of ofxTransactions) {
          // NOTE: property names must match databaseColumns names
@@ -95,13 +93,13 @@ const computeMemo = ((accountType, payee, memo) => {
             id: ofxTransaction.FITID
          };
 
-         // 2.a. if it already exists, skip
+         // if it exists, skip it
          if (databaseIds.includes(transaction.id)) {
-            console.log(`ALREADY EXISTS: ${transaction.date}, ${transaction.payee}, ${transaction.amount}, ${transaction.id}`);
+            //console.log(`EXISTS: ${transaction.date}, ${transaction.payee}, ${transaction.amount}, ${transaction.id}`);
             continue;
          }
-
-         // 2.b. remap payee and category
+         
+         // remap payee and category
          mappingKeys.find(mappingKey => {
             const re = new RegExp(mappingKey);
             if (re.test(transaction.payee) || re.test(transaction.notes)) {
@@ -109,21 +107,28 @@ const computeMemo = ((accountType, payee, memo) => {
                transaction.category = mappings[mappingKey].category;
             }
          });
+         if (transaction.category == "Misc Expense") {
+            transaction.payee = transaction.payee.toUpperCase();
+            console.log(`UNMAPPED: ${transaction.date}, ${transaction.payee}, ${transaction.amount}, ${transaction.notes}`);
+         }
 
-         // 2.c. save
+         // save it
          transactions.push(transaction);
-         database.push(transaction); // will sort it later
+         database.push(transaction);
       }
 
-      // 3. create csv file
-      const csvFile = path.join(folder, `${institution}-${dateStart.format('YYYYMMDD')}-${dateEnd.format('YYYYMMDD')}-patched.csv`);
-      const csvHeaders = 'Date,Payee,Category,Amount,Notes,CheckNum,Institution,Type,Id';
-      const csvData = csvHeaders + csvjson.toCSV(transactions, {delimiter: ',', headers: 'none'}) + '\n';
+      // save transactions
+      transactions.sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+      const csvFile = path.join(DOWNLOADSFOLDER, `${institution}-${dateStart.format('YYYYMMDD')}-${dateEnd.format('YYYYMMDD')}-patched.csv`);
+      const csvData = HEADERS + csvjson.toCSV(transactions, {delimiter: ',', headers: 'none'}) + '\n';
       fs.writeFileSync(csvFile, csvData);
+      fs.renameSync(ofxFile, ofxFile.replace(".ofx", ".old"));
    }
 
-   const databaseColumns = 'date,payee,category,amount,notes,checknum,institution,type,id';
-   database.sort((a,b) => b.date.localeCompare(a.date));
-   const databaseData = databaseColumns + csvjson.toCSV(database, {delimiter: ',', headers: 'none'}) + '\n';
+   // update database
+   database.sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+   const databaseData = HEADERS + csvjson.toCSV(database, {delimiter: ',', headers: 'none'}) + '\n';
+   fs.copyFileSync(DATABASEFILE, DATABASEBAKFILE);
    fs.writeFileSync(DATABASEFILE, databaseData);
+
 })();
