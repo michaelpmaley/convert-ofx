@@ -9,8 +9,6 @@ dayjs.extend(utc);
 
 const DOWNLOADSFOLDER = path.join(os.homedir(), 'Downloads');
 const MAPPINGSFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transaction-mappings.json');
-const DATABASEFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transactions.csv');
-const DATABASEBAKFILE = path.join(os.homedir(), 'Documents', 'Financial', 'transactions.bak');
 const HEADERS = 'date,payee,category,amount,notes,checknum,institution,type,id';
 
 const ACCOUNTTYPE = {
@@ -57,9 +55,6 @@ const computeMemo = ((accountType, payee, memo) => {
    const mappings = JSON.parse(fs.readFileSync(MAPPINGSFILE).toString());
    const mappingKeys = Object.keys(mappings);
 
-   const database = csvjson.toObject(fs.readFileSync(DATABASEFILE).toString(), {delimiter: ',', quote: '"'});
-   const databaseIds = database.filter(i => i.id !== null && i.id.trim() !== "").map(i => i.id);
-
    for (const file of fs.readdirSync(DOWNLOADSFOLDER)) {
       if (!file.toLowerCase().endsWith('.qfx') || file.toLowerCase().includes('patched')) {
          console.log(`SKIPPING: ${file}`);
@@ -80,7 +75,7 @@ const computeMemo = ((accountType, payee, memo) => {
       // process transactions
       const transactions = [];
       for (const ofxTransaction of ofxTransactions) {
-         // NOTE: property names must match databaseColumns names
+         // NOTE: property names must match header names
          const transaction = {
             date: parseOfxDate(ofxTransaction.DTPOSTED).format('YYYY-MM-DD'),
             payee: ofxTransaction.NAME,
@@ -93,12 +88,6 @@ const computeMemo = ((accountType, payee, memo) => {
             id: ofxTransaction.FITID
          };
 
-         // if it exists, skip it
-         if (databaseIds.includes(transaction.id)) {
-            //console.log(`EXISTS: ${transaction.date}, ${transaction.payee}, ${transaction.amount}, ${transaction.id}`);
-            continue;
-         }
-         
          // remap payee and category
          mappingKeys.find(mappingKey => {
             const re = new RegExp(mappingKey);
@@ -114,7 +103,6 @@ const computeMemo = ((accountType, payee, memo) => {
 
          // save it
          transactions.push(transaction);
-         database.push(transaction);
       }
 
       // save transactions
@@ -124,11 +112,5 @@ const computeMemo = ((accountType, payee, memo) => {
       fs.writeFileSync(csvFile, csvData);
       fs.renameSync(ofxFile, ofxFile.replace(".ofx", ".old"));
    }
-
-   // update database
-   database.sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
-   const databaseData = HEADERS + csvjson.toCSV(database, {delimiter: ',', headers: 'none'}) + '\n';
-   fs.copyFileSync(DATABASEFILE, DATABASEBAKFILE);
-   fs.writeFileSync(DATABASEFILE, databaseData);
 
 })();

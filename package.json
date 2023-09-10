@@ -4,9 +4,7 @@
   "description": "Convert and patch qfx files into csv files",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "backfill": "node backfill.js",
-    "audit": "node audit.js"
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "Michael P Maley",

@@ -49,13 +49,9 @@ This is a quick and dirty script to convert and patch *.qfx files to CSV files. 
 * output each file as *-patched.csv in the ~/Downloads folder
 * patch the Payee and Category fields based upon a mappings file
 * create/update the memo field for bank transactions
-* add new transactions to the database file
-* skip duplicate transactions based up the existing transactions in the database
 
 Notes:
 * All folder locations and filenames can be easily adjusted at the top of the index.js file.
-* The database is used primarily for existing transaction detection. My current financial application's qfx import handles duplicates but doesn't import the notes field and doesn't support category. However, its csv import doesn't handle duplicates. That being said, one way to view the database is an application agnostic historical record, making it very easy to switch applications.
-* There is a backfill script that can be used to perform minor surgery on the database file as needed.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -76,20 +72,6 @@ It is a basic json dictionary, for example:
 }
 ```
 where the key is a regular expression that will match on payee or memo/note fields.
-
-2. Create the initial database file, `~/Documents/Financial/transactions.csv`.
-```
-date,payee,category,amount,notes,checknum,institution,type,id
-```
-
-It will become a history of all processed transactions. For example:
-```
-date,payee,category,amount,notes,checknum,institution,type,id
-2020-06-16,OUDE KERK AMSTERDAM AMSTERDAM,Misc Expense,-21.38,OUDE KERK AMSTERDAM AMSTERDAM 12/15 Euro       24.00 X 1.07000,,BOA,DEBIT,202210000
-2020-05-10,AplPay HUGENDUBEL MUMUENCHEN DE,Misc Expense,-11.22,BOOK STORE AplPay HUGENDUBEL MUENCHEN / MARIENPLATZ MUENCHEN DE,,BOA,DEBIT,202048943
-2020-05-04,Amazon,Shopping,-3.19,55555-BC9RQXWEFGP DIGITAL PRIME VIDEO *I60589RS3 888-222-3333 TX,,AMEX,DEBIT,190003580174349989
-2020-04-21,Starbucks,Food & Dining,-25.00,33333-99VlpqMavbq 8007137942 STARBUCKS 800-777-2222 TX,,AMEX,DEBIT,190229472900044339
-```
 
 
 
@@ -112,7 +94,7 @@ date,payee,category,amount,notes,checknum,institution,type,id
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-1. Browse to each financial institution and download the latest transactions in Quicken (qfx) format. Don't worry about the start date overlapping too much because existing transactions will be skipped.
+1. Browse to each financial institution and download the latest transactions in Quicken (qfx) format.
 
 2. In the project folder, run the script.
 ```sh
